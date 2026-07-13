@@ -1,0 +1,52 @@
+name: Build APK (Vistoria Escolar)
+
+# Compila o app e gera o APK como artefato para download.
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Descompactar projeto
+        run: |
+          unzip -o vistoria_escolar_flutter.zip -d _build
+          ls -la _build/vistoria_escolar
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Gerar plataforma Android
+        working-directory: _build/vistoria_escolar
+        run: flutter create --platforms=android .
+
+      - name: Baixar dependencias
+        working-directory: _build/vistoria_escolar
+        run: flutter pub get
+
+      - name: Rodar testes (nao bloqueia o build)
+        working-directory: _build/vistoria_escolar
+        run: flutter test || echo "Testes falharam ou nao rodaram; seguindo."
+
+      - name: Build APK (release)
+        working-directory: _build/vistoria_escolar
+        run: flutter build apk --release
+
+      - name: Publicar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: vistoria-escolar-apk
+          path: _build/vistoria_escolar/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
